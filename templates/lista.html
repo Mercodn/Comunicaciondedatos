@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lista de Reportes</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f8f9fa;
+      margin: 0;
+    }
+    header {
+      background-color: #007bff;
+      color: white;
+      text-align: center;
+      padding: 10px 0;
+    }
+    table {
+      width: 95%;
+      margin: 20px auto;
+      border-collapse: collapse;
+      background-color: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 5px rgba(0,0,0,0.2);
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      text-align: center;
+    }
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+    #map {
+      height: 400px;
+      margin: 20px;
+      border-radius: 10px;
+    }
+    .boton-volver {
+      display: block;
+      margin: 10px auto;
+      padding: 10px 20px;
+      background-color: #28a745;
+      color: white;
+      text-align: center;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .boton-volver:hover {
+      background-color: #1e7e34;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>📋 Lista de Reportes de Incidentes</h2>
+  </header>
+
+  <button class="boton-volver" onclick="window.location.href='/'">⬅️ Volver al inicio</button>
+
+  <div id="map"></div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Tipo</th>
+        <th>Descripción</th>
+        <th>Latitud</th>
+        <th>Longitud</th>
+        <th>Fecha y hora</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for reporte in reportes %}
+      <tr>
+        <td>{{ reporte.tipo }}</td>
+        <td>{{ reporte.descripcion }}</td>
+        <td>{{ reporte.latitud }}</td>
+        <td>{{ reporte.longitud }}</td>
+        <td>{{ reporte.fecha_hora }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <script>
+    const reportes = {{ reportes | tojson }};
+    const map = L.map('map').setView([4.916, -74.031], 10);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    reportes.forEach(r => {
+      if (r.latitud && r.longitud) {
+        L.marker([r.latitud, r.longitud])
+          .addTo(map)
+          .bindPopup(`⚠️ <b>${r.tipo}</b><br>${r.descripcion}<br><small>${r.fecha_hora}</small>`);
+      }
+    });
+  </script>
+</body>
+</html>

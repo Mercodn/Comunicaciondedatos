@@ -3,7 +3,6 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from dotenv import load_dotenv
 import os
-import pandas as pd
 import json
 
 # Cargar variables de entorno
@@ -32,9 +31,6 @@ class Reporte(db.Model):
     longitud = db.Column(db.Float, nullable=False)
     fecha_hora = db.Column(db.DateTime, default=datetime.now)
     municipio = db.Column(db.String(100), nullable=False)
-
-# Ruta del archivo Excel
-DATA_FILE = "data/reportes_incidentes.xlsx"
 
 # Variable global para el GeoJSON
 sabana_geojson = None
@@ -109,14 +105,6 @@ def obtener_municipio(lat, lng):
         print(f"Error determinando municipio: {e}")
         return "Sabana Centro"
 
-# Crear el archivo si no existe
-if not os.path.exists("data"):
-    os.makedirs("data")
-
-if not os.path.exists(DATA_FILE):
-    df = pd.DataFrame(columns=["tipo", "descripcion", "latitud", "longitud", "fecha_hora", "municipio"])
-    df.to_excel(DATA_FILE, index=False)
-
 # Cargar el GeoJSON al iniciar la aplicación
 cargar_geojson()
 
@@ -128,34 +116,37 @@ def home():
 def reportar():
     try:
         data = request.get_json()
-        df = pd.read_excel(DATA_FILE)
-
-        # Determinar el municipio
         municipio = obtener_municipio(float(data["latitud"]), float(data["longitud"]))
         
-        nuevo_reporte = pd.DataFrame([{
-            "tipo": data["tipo"],
-            "descripcion": data["descripcion"],
-            "latitud": data["latitud"],
-            "longitud": data["longitud"],
-            "fecha_hora": pd.Timestamp.now().strftime("%d/%m/%Y, %I:%M:%S %p"),
-            "municipio": municipio
-        }])
-
-        df = pd.concat([df, nuevo_reporte], ignore_index=True)
-        df.to_excel(DATA_FILE, index=False)
+        nuevo_reporte = Reporte(
+            tipo=data["tipo"],
+            descripcion=data["descripcion"],
+            latitud=float(data["latitud"]),
+            longitud=float(data["longitud"]),
+            municipio=municipio
+        )
+        
+        db.session.add(nuevo_reporte)
+        db.session.commit()
 
         return jsonify({"mensaje": "Reporte guardado con éxito ✅", "municipio": municipio})
-    
     except Exception as e:
+        db.session.rollback()
         print(f"Error en reportar: {e}")
         return jsonify({"error": "Error al guardar el reporte"}), 500
 
 @app.route("/obtener_reportes")
 def obtener_reportes():
     try:
-        df = pd.read_excel(DATA_FILE)
-        return df.to_json(orient="records")
+        reportes = Reporte.query.all()
+        return jsonify([{
+            "tipo": r.tipo,
+            "descripcion": r.descripcion,
+            "latitud": r.latitud,
+            "longitud": r.longitud,
+            "fecha_hora": r.fecha_hora.strftime("%d/%m/%Y, %I:%M:%S %p"),
+            "municipio": r.municipio
+        } for r in reportes])
     except Exception as e:
         print(f"Error obteniendo reportes: {e}")
         return jsonify([])
@@ -163,12 +154,24 @@ def obtener_reportes():
 @app.route("/lista")
 def lista():
     try:
-        df = pd.read_excel(DATA_FILE)
-        return render_template("lista.html", reportes=df.to_dict(orient="records"))
+        reportes = Reporte.query.all()
+        return render_template("lista.html", reportes=[{
+            "tipo": r.tipo,
+            "descripcion": r.descripcion,
+            "latitud": r.latitud,
+            "longitud": r.longitud,
+            "fecha_hora": r.fecha_hora.strftime("%d/%m/%Y, %I:%M:%S %p"),
+            "municipio": r.municipio
+        } for r in reportes])
     except Exception as e:
         print(f"Error cargando lista: {e}")
         return render_template("lista.html", reportes=[])
 
+@app.route("/health")
+def health_check():
+    return jsonify({"status": "healthy"}), 200
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    debug_mode = os.environ.get("FLASK_ENV") != "production"
+    app.run(host="0.0.0.0", port=port, debug=debug_mode)

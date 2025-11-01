@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reportar Incidente</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f8f9fa;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    header {
+      background-color: #007bff;
+      color: white;
+      text-align: center;
+      padding: 8px 0;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      z-index: 10;
+      flex-shrink: 0;
+    }
+    header h2 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+    .container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      padding: 10px;
+      gap: 10px;
+    }
+    #map {
+      flex: 1;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.15);
+    }
+    .form-container {
+      width: 300px;
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    label {
+      font-weight: bold;
+      font-size: 0.9rem;
+      margin-top: 5px;
+    }
+    input, textarea, select, button {
+      width: 100%;
+      margin: 3px 0 10px 0;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      padding: 10px;
+      margin-top: 5px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .boton-lista {
+      background-color: #28a745;
+    }
+    .boton-lista:hover {
+      background-color: #1e7e34;
+    }
+    #manual-btn {
+      background-color: #ffc107;
+      color: black;
+    }
+    #manual-btn:hover {
+      background-color: #e0a800;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h2>🚨 Reporte de Incidentes Viales</h2>
+  </header>
+
+  <div class="container">
+    <div id="map"></div>
+    
+    <div class="form-container">
+      <form id="formularioAlerta">
+        <label for="tipo">Tipo de incidente:</label>
+        <select id="tipo" required>
+          <option value="">Seleccione un tipo</option>
+          <option value="Accidente">Accidente</option>
+          <option value="Tráfico pesado">Tráfico pesado</option>
+          <option value="Vía dañada">Vía dañada</option>
+          <option value="Obstrucción">Obstrucción</option>
+        </select>
+
+        <label for="descripcion">Descripción:</label>
+        <textarea id="descripcion" rows="2" placeholder="Describa brevemente el incidente" required></textarea>
+
+        <label for="latitud">Latitud:</label>
+        <input type="number" id="latitud" step="any" placeholder="Ej: 4.6097" required>
+
+        <label for="longitud">Longitud:</label>
+        <input type="number" id="longitud" step="any" placeholder="Ej: -74.0817" required>
+
+        <button type="button" id="manual-btn">🗺️ Seleccionar ubicación manualmente</button>
+        <button type="submit">📍 Reportar incidente</button>
+        <button type="button" class="boton-lista" onclick="window.location.href='/lista'">📋 Ver lista de reportes</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let manualMode = false;
+    let marker;
+    let userLat, userLng;
+
+    const map = L.map('map', {
+      minZoom: 10,
+      maxZoom: 24,
+      maxBounds: [
+        [5.2, -73.9],
+        [4.6, -74.3]
+      ],
+      maxBoundsViscosity: 1.0
+    }).setView([4.916, -74.031], 13);
+
+    // Capa base OSM
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // 🩶 Sombreado fuera de Sabana Centro
+    const world = [[[-90,-180],[-90,180],[90,180],[90,-180]]];
+    let sabanaPolygon; // lo llenaremos luego
+
+    // 🎨 Colores suaves por municipio
+    const colores = [
+      "#f28e2b","#e15759","#76b7b2","#59a14f","#edc948",
+      "#b07aa1","#ff9da7","#9c755f","#bab0ac","#86bc86"
+    ];
+
+    // Cargar GeoJSON de municipios
+    fetch("sabana_centro.geojson")
+      .then(res => res.json())
+      .then(data => {
+        let i = 0;
+        L.geoJSON(data, {
+          style: feature => ({
+            color: "#333",
+            weight: 1,
+            fillColor: colores[i++ % colores.length],
+            fillOpacity: 0.6
+          }),
+          onEachFeature: (feature, layer) => {
+            layer.bindPopup(`<b>${feature.properties.NOMBRE}</b>`);
+          }
+        }).addTo(map);
+
+        // Extraer polígonos de Sabana Centro para sombreado
+        const coords = data.features.flatMap(f => f.geometry.coordinates);
+        sabanaPolygon = coords.flat(1).map(p => [p[1], p[0]]);
+        L.polygon([...world, sabanaPolygon], {
+          color: "none",
+          fillColor: "rgba(128,128,128,0.6)",
+          fillOpacity: 0.6,
+          interactive: false
+        }).addTo(map);
+      })
+      .catch(err => console.error("Error cargando GeoJSON:", err));
+
+    // Intentar obtener ubicación del usuario
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          userLat = pos.coords.latitude;
+          userLng = pos.coords.longitude;
+          map.setView([userLat, userLng], 17);
+          marker = L.marker([userLat, userLng]).addTo(map)
+            .bindPopup("📍 Tu ubicación actual").openPopup();
+          document.getElementById("latitud").value = userLat;
+          document.getElementById("longitud").value = userLng;
+        },
+        err => {
+          console.warn("Error geolocalización:", err);
+          alert("⚠️ No se pudo determinar tu ubicación. Usa el modo manual.");
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    // Activar modo manual
+    document.getElementById("manual-btn").addEventListener("click", () => {
+      manualMode = true;
+      alert("📍 Toca el mapa para seleccionar la ubicación del incidente.");
+    });
+
+    // Seleccionar punto manualmente
+    map.on("click", e => {
+      if (manualMode) {
+        const { lat, lng } = e.latlng;
+        if (marker) marker.setLatLng([lat, lng]);
+        else marker = L.marker([lat, lng]).addTo(map);
+        map.setView([lat, lng], 17);
+        marker.bindPopup("📍 Ubicación seleccionada manualmente").openPopup();
+        document.getElementById("latitud").value = lat;
+        document.getElementById("longitud").value = lng;
+        manualMode = false;
+      }
+    });
+
+    // Enviar reporte
+    const form = document.getElementById("formularioAlerta");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const tipo = document.getElementById("tipo").value;
+      const descripcion = document.getElementById("descripcion").value;
+      const latitud = parseFloat(document.getElementById("latitud").value);
+      const longitud = parseFloat(document.getElementById("longitud").value);
+
+      if (!latitud || !longitud) {
+        alert("⚠️ Debes seleccionar una ubicación válida.");
+        return;
+      }
+
+      const nuevoReporte = { tipo, descripcion, latitud, longitud };
+
+      const res = await fetch("/reportar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nuevoReporte)
+      });
+
+      if (res.ok) {
+        alert("✅ Incidente reportado con éxito");
+        L.marker([latitud, longitud])
+          .addTo(map)
+          .bindPopup(`⚠️ <b>${tipo}</b><br>${descripcion}`);
+        form.reset();
+      } else {
+        alert("❌ Error al enviar el reporte");
+      }
+    });
+  </script>
+</body>
+</html>
+
+
+
+
