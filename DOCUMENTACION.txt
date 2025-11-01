@@ -1,0 +1,91 @@
+DOCUMENTACIÓN DEL PROYECTO - ACTUALIZACIÓN 31/10/2025
+
+1. OBJETIVOS COMPLETADOS:
+✅ Base de datos MySQL implementada
+✅ Hosting en la nube (Render.com)
+✅ Despliegue inicial del proyecto
+
+2. OBJETIVOS PENDIENTES:
+❌ Configuración de dominio personalizado
+❌ Implementación de servicios de mensajería
+
+3. DIFERENCIAS DE ENTORNO:
+
+LINUX (TU CONFIGURACIÓN):
+- MySQL en Podman
+- Host: 127.0.0.1
+- Puerto: 3306
+- Usuario: root
+- Contraseña: root
+
+WINDOWS (CONFIGURACIÓN DE TU COMPAÑERO):
+- MySQL en XAMPP/WAMP
+- Host: localhost
+- Puerto: 3306
+- Usuario: root
+- Contraseña: [vacía por defecto]
+
+4. CAMBIOS REALIZADOS HOY:
+a) Configuración de base de datos:
+   - Creación de la base de datos 'reportes_db'
+   - Implementación de tabla 'reporte'
+   - Migración de Excel a MySQL
+
+b) Configuración del despliegue:
+   - Hosting: Render.com
+   - URL: https://reportes-app.onrender.com
+   - Configuración de variables de entorno
+
+c) Dependencias actualizadas:
+   - Flask y Werkzeug compatibles
+   - SQLAlchemy versión específica para estabilidad
+
+5. INSTRUCCIONES PARA WINDOWS:
+
+a) Configurar el archivo .env:
+```
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=reportes_db
+```
+
+b) Crear la base de datos en XAMPP/WAMP:
+```sql
+CREATE DATABASE reportes_db;
+USE reportes_db;
+
+CREATE TABLE reporte (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tipo VARCHAR(100) NOT NULL,
+    descripcion TEXT NOT NULL,
+    latitud FLOAT NOT NULL,
+    longitud FLOAT NOT NULL,
+    fecha_hora DATETIME DEFAULT CURRENT_TIMESTAMP,
+    municipio VARCHAR(100) NOT NULL
+);
+```
+
+6. PRÓXIMOS PASOS:
+1. Configurar dominio personalizado
+2. Implementar certificados SSL
+3. Integrar servicios de mensajería
+4. Pruebas de carga y rendimiento
+
+7. NOTAS IMPORTANTES:
+- La aplicación usa variables de entorno para la configuración
+- Se mantienen dos archivos: .env (local) y .env.example (template)
+- El proyecto está en GitHub: https://github.com/Mercodn/Comunicaciondedatos
+- La versión gratuita de Render tiene limitaciones de inactividad
+
+8. SOLUCIÓN DE PROBLEMAS:
+- Si hay problemas de conexión, verificar configuración MySQL
+- Para problemas de dependencias, usar versions.txt
+- En caso de error 500, revisar logs de la aplicación
+
+CONTACTO:
+Para dudas o aclaraciones, consultar el repositorio o contactar al equipo.
+
+--------------------
+Última actualización: 31/10/2025
