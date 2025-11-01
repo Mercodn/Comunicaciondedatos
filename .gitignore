@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Archivos de datos (no subir Excel con datos reales)
+data/reportes_incidentes.xlsx
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+.env
+__pycache__/
+*.pyc
+data/*.xlsx
+venv/
+.DS_Store
+node_modules/
+
