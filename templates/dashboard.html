@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Dashboard — Usuario</title>
+  <link rel="stylesheet" href="/static/css/wireframe.css" />
+</head>
+<body class="wf-body">
+  <header class="wf-header">
+    <h1>Dashboard</h1>
+    <nav class="wf-nav">
+      <a href="/">Inicio</a>
+      <a href="/reportar">Reportar</a>
+      <a href="/lista">Lista</a>
+      <a href="/logout">Salir</a>
+    </nav>
+  </header>
+
+  <main class="wf-main wf-grid">
+    <section class="wf-card kpi">
+      <h3>Total reportes</h3>
+      <div class="wf-kpi" id="kpi-total">—</div>
+    </section>
+
+    <section class="wf-card kpi">
+      <h3>Últimos 7 días</h3>
+      <div class="wf-kpi" id="kpi-week">—</div>
+    </section>
+
+    <section class="wf-card map">
+      <h3>Mapa (placeholder)</h3>
+      <div id="mapPlaceholder" class="wf-map">MAPA</div>
+    </section>
+
+    <section class="wf-card list">
+      <h3>Últimos reportes</h3>
+      <table id="recentReports" class="wf-table">
+        <thead><tr><th>Tipo</th><th>Fecha</th><th>Municipio</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="/static/js/dashboard.js"></script>
+  <footer class="wf-footer"><small>Wireframe — usuario</small></footer>
+</body>
+</html>

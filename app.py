@@ -1,9 +1,12 @@
 from flask import Flask, render_template, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-from dotenv import load_dotenv
 import os
-import json
+import json                # <--- añadir esta línea
+from dotenv import load_dotenv
+from extensions import db   # <-- nuevo import
+from flask_migrate import Migrate, upgrade, init, migrate  # <-- nuevo import
+import logging
+from logging.handlers import RotatingFileHandler
 
 # Cargar variables de entorno
 load_dotenv()
@@ -11,26 +14,22 @@ load_dotenv()
 app = Flask(__name__)
 
 # Configuración de MySQL usando variables de entorno
-DB_HOST = os.getenv('DB_HOST', 'localhost')
+DB_HOST = os.getenv('DB_HOST', '127.0.0.1')
 DB_USER = os.getenv('DB_USER', 'root')
 DB_PASSWORD = os.getenv('DB_PASSWORD', 'root')
 DB_NAME = os.getenv('DB_NAME', 'reportes_db')
 DB_PORT = os.getenv('DB_PORT', '3306')
 
 # Construir URI de conexión
-app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
+app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
 
-# Modelo para los reportes
-class Reporte(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    tipo = db.Column(db.String(100), nullable=False)
-    descripcion = db.Column(db.Text, nullable=False)
-    latitud = db.Column(db.Float, nullable=False)
-    longitud = db.Column(db.Float, nullable=False)
-    fecha_hora = db.Column(db.DateTime, default=datetime.now)
-    municipio = db.Column(db.String(100), nullable=False)
+db.init_app(app)            # <-- inicializar aquí
+migrate = Migrate()         # <-- nuevo
+migrate.init_app(app, db)   # <-- nuevo
+
+# después de init_app, importar modelos
+from models import Reporte, User, Municipio, LogEntry
 
 # Variable global para el GeoJSON
 sabana_geojson = None
@@ -58,11 +57,10 @@ def cargar_geojson():
             if not contenido:
                 print(f"⚠️ Archivo {geojson_path} no tiene contenido")
                 return False
-                
+                 #
             sabana_geojson = json.loads(contenido)
             print(f"✅ GeoJSON cargado correctamente con {len(sabana_geojson['features'])} municipios")
             return True
-            
     except json.JSONDecodeError as e:
         print(f"❌ Error decodificando JSON: {e}")
         return False
@@ -108,6 +106,17 @@ def obtener_municipio(lat, lng):
 # Cargar el GeoJSON al iniciar la aplicación
 cargar_geojson()
 
+# después de app = Flask(__name__)
+# Asegurar que exista el directorio de logs
+os.makedirs('logs', exist_ok=True)
+
+handler = RotatingFileHandler('logs/app.log', maxBytes=1024*1024, backupCount=3)
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+handler.setFormatter(formatter)
+app.logger.addHandler(handler)
+app.logger.setLevel(logging.INFO)
+
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -117,7 +126,7 @@ def reportar():
     try:
         data = request.get_json()
         municipio = obtener_municipio(float(data["latitud"]), float(data["longitud"]))
-        
+
         nuevo_reporte = Reporte(
             tipo=data["tipo"],
             descripcion=data["descripcion"],
@@ -170,6 +179,46 @@ def lista():
 @app.route("/health")
 def health_check():
     return jsonify({"status": "healthy"}), 200
+
+@app.cli.command("init_db")
+def init_db_command():
+    """Inicializa la base de datos."""
+    from extensions import db
+    db.create_all()
+    print("Base de datos inicializada.")
+
+@app.cli.command("migrate_db")
+def migrate_db_command():
+    """Aplica migraciones a la base de datos."""
+    upgrade()
+    print("Migraciones aplicadas.")
+
+@app.cli.command("create_migration")
+def create_migration_command():
+    """Crea una nueva migración."""
+    migrate()
+    print("Nueva migración creada.")
+
+@app.errorhandler(500)
+def internal_error(e):
+    app.logger.exception("Internal server error")
+    return jsonify({"error": "Internal server error"}), 500
+
+# nuevo: wireframe routes
+@app.route("/login", methods=["GET", "POST"])
+def login_view():
+    if request.method == "POST":
+        # placeholder: real auth no implementada
+        return jsonify({"mensaje":"login recibido"}), 200
+    return render_template("login.html")
+
+@app.route("/dashboard")
+def dashboard_view():
+    return render_template("dashboard.html")
+
+@app.route("/admin/dashboard")
+def admin_dashboard_view():
+    return render_template("admin_dashboard.html")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

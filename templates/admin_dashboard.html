@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="/static/css/wireframe.css" />
+</head>
+<body class="wf-body">
+  <header class="wf-header">
+    <h1>Admin Dashboard</h1>
+    <nav class="wf-nav">
+      <a href="/">Inicio</a>
+      <a href="/admin/users">Usuarios</a>
+      <a href="/admin/analytics">Analíticas</a>
+      <a href="/logout">Salir</a>
+    </nav>
+  </header>
+
+  <main class="wf-main wf-grid">
+    <section class="wf-card kpi">
+      <h3>Usuarios</h3>
+      <div class="wf-kpi" id="kpi-users">—</div>
+    </section>
+
+    <section class="wf-card kpi">
+      <h3>Reportes totales</h3>
+      <div class="wf-kpi" id="kpi-reports">—</div>
+    </section>
+
+    <section class="wf-card analytics">
+      <h3>Analíticas (placeholder)</h3>
+      <div class="wf-chart">[chart placeholder]</div>
+    </section>
+
+    <section class="wf-card recent">
+      <h3>Últimos reportes</h3>
+      <table class="wf-table" id="adminReports">
+        <thead><tr><th>#</th><th>Tipo</th><th>Fecha</th><th>Municipio</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="/static/js/dashboard.js"></script>
+  <footer class="wf-footer"><small>Wireframe — admin</small></footer>
+</body>
+</html>
