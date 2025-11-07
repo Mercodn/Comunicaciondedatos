@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Reportar — Wireframe</title>
+  <link rel="stylesheet" href="/static/css/wireframe.css" />
+</head>
+<body class="wf-body">
+  <header class="wf-header">
+    <h1>Reportar incidente</h1>
+    <nav class="wf-nav"><a href="/">Inicio</a> <a href="/dashboard">Dashboard</a></nav>
+  </header>
+
+  <main class="wf-main">
+    <section class="wf-card wf-auth">
+      <h2>Nuevo reporte</h2>
+      <form id="reportForm">
+        <label>Tipo
+          <select name="tipo" id="tipo" required>
+            <option value="">Selecciona...</option>
+            <option>Accidente</option>
+            <option>Congestión</option>
+            <option>Obstáculo</option>
+            <option>Otro</option>
+          </select>
+        </label>
+
+        <label>Descripción
+          <textarea id="descripcion" name="descripcion" rows="4" required></textarea>
+        </label>
+
+        <label>Latitud
+          <input id="latitud" name="latitud" type="text" placeholder="Obtener ubicación" required readonly>
+        </label>
+
+        <label>Longitud
+          <input id="longitud" name="longitud" type="text" placeholder="Obtener ubicación" required readonly>
+        </label>
+
+        <div class="wf-actions">
+          <button id="btnGetLoc" type="button">Obtener ubicación</button>
+          <button type="submit">Enviar reporte</button>
+        </div>
+
+        <div id="msg" style="margin-top:10px;color:#1f7a1f;"></div>
+      </form>
+    </section>
+
+    <aside class="wf-card wf-info">
+      <h3>Ayuda</h3>
+      <p>Usa "Obtener ubicación" para rellenar latitud/longitud. El reporte se enviará al servidor y se mostrará el municipio detectado.</p>
+    </aside>
+  </main>
+
+  <script src="/static/js/reportar.js"></script>
+  <footer class="wf-footer"><small>Wireframe — reportar</small></footer>
+</body>
+</html>

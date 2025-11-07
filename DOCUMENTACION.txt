@@ -188,9 +188,15 @@ Fecha: 6 de noviembre de 2025
 ## Estado por objetivos generales (1..10)
 
 1) Revisar documentación para Wireframe (login, usuario, analíticas, inicio de sesión, cantidad reportes, ubicación)
-- Estado: Parcial
-- Hecho: Rutas y plantillas wireframe creadas (login, dashboard usuario, dashboard admin) y assets CSS/JS.
-- Falta: iteración de UX, validación visual y contenido final.
+- Estado: Hecho
+- Hecho: Rutas y plantillas wireframe creadas y completadas:
+  - templates/login.html (login básico)
+  - templates/reportar.html (formulario funcional con geolocalización y validación)
+  - templates/dashboard.html (KPIs y lista)
+  - templates/admin_dashboard.html
+  - static/js/reportar.js (envío JSON al endpoint /reportar)
+  - static/js/dashboard.js (consumo de /obtener_reportes)
+- Notas: formulario de reporte obtiene lat/long desde el navegador y envía JSON; el backend responde con municipio detectado. Falta pulir textos UX y pruebas con usuarios.
 
 3) Revisar que el sitio use los protocolos XMPP y TLS
 - Estado: Nada

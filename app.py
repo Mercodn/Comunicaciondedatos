@@ -121,8 +121,10 @@ app.logger.setLevel(logging.INFO)
 def home():
     return render_template("index.html")
 
-@app.route("/reportar", methods=["POST"])
+@app.route("/reportar", methods=["GET", "POST"])
 def reportar():
+    if request.method == "GET":
+        return render_template("reportar.html")
     try:
         data = request.get_json()
         municipio = obtener_municipio(float(data["latitud"]), float(data["longitud"]))

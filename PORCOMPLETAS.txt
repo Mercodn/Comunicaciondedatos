@@ -1,0 +1,392 @@
+--------------------
+ACTUALIZACIÓN Y GUÍA PARA COMPAÑERO (Windows) — 06/11/2025
+--------------------
+
+Resumen rápido — qué hay y qué falta
+- Hecho:
+  - Backend Flask con endpoints: /, /reportar (GET/POST), /obtener_reportes, /lista, /health.
+  - Modelos base (models.py): Reporte, User, Municipio, LogEntry.
+  - SQLAlchemy inicializado y db.create_all funciona.
+  - Wireframes y assets: templates (login, reportar, dashboard, admin_dashboard) y static/js/css.
+  - Logging con RotatingFileHandler.
+  - Scaffold de migraciones (Flask‑Migrate) integrado en app.py y script de gestión.
+  - .env.example y .gitignore añadidos.
+
+- Pendiente (prioridad):
+  1) Generar y aplicar migraciones (Flask‑Migrate).
+  2) Ajustar modelo de dominio (FKs, relationships, índices) y volver a migrar.
+  3) Autenticación (Flask-Login) y validaciones.
+  4) XMPP + TLS (servicio y bot) — plan, no implementado.
+  5) Certificado HTTPS en producción (nginx + certbot) — no implementado.
+  6) Diagramas (ER / secuencia) y tests/CI.
+
+Acciones concretas para Windows (paso a paso)
+
+A) Preparar entorno Python (Windows PowerShell)
+1. Crear y activar virtualenv:
+   ```powershell
+   cd "C:\ruta\a\Documentos\codigo\Visual Code"
+   python -m venv venv
+   .\venv\Scripts\Activate
+   ```
+
+2. Instalar dependencias:
+   ```powershell
+   pip install --upgrade pip
+   pip install -r requirements.txt
+   ```
+
+B) Configurar base de datos MySQL (XAMPP/WAMP) — opción Windows
+1. Arrancar MySQL desde XAMPP/WAMP control panel.
+2. Crear la base de datos (phpMyAdmin o CLI):
+   ```sql
+   CREATE DATABASE IF NOT EXISTS reportes_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+   o desde Windows CMD (si mysql en PATH):
+   ```cmd
+   mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS reportes_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+   ```
+
+3. Crear archivo .env (copiar .env.example) y ajustar:
+   ```
+   DB_HOST=localhost
+   DB_PORT=3306
+   DB_USER=root
+   DB_PASSWORD=tu_password
+   DB_NAME=reportes_db
+   FLASK_APP=app.py
+   FLASK_ENV=development
+   PORT=5000
+   ```
+
+C) Migraciones (Flask‑Migrate) — Windows (PowerShell / CMD)
+- PowerShell:
+  ```powershell
+  $env:FLASK_APP = "app.py"
+  flask db init        # solo la primera vez
+  flask db migrate -m "Initial models"
+  flask db upgrade
+  ```
+
+- CMD:
+  ```cmd
+  set FLASK_APP=app.py
+  flask db init
+  flask db migrate -m "Initial models"
+  flask db upgrade
+  ```
+
+Nota: Si flask db init falla porque ya existe migrations/ omitir init.
+
+D) Ejecutar la aplicación localmente
+- PowerShell:
+  ```powershell
+  .\venv\Scripts\Activate
+  python app.py
+  ```
+- o con flask run:
+  ```powershell
+  $env:FLASK_APP="app.py"
+  flask run --host=0.0.0.0 --port=5000
+  ```
+
+Probar endpoints:
+```powershell
+curl http://127.0.0.1:5000/health
+curl http://127.0.0.1:5000/obtener_reportes
+```
+
+E) Desarrollo local HTTPS (opcional en Windows)
+- Para desarrollo local seguro usar mkcert:
+  1. Instalar mkcert (scoop/chocolatey o desde release).
+  2. Generar certificados:
+     ```powershell
+     mkcert -install
+     mkcert localhost 127.0.0.1 ::1
+     ```
+  3. En app.py, para desarrollo, cambiar app.run a:
+     ```python
+     app.run(host='0.0.0.0', port=5000, ssl_context=('localhost.pem','localhost-key.pem'))
+     ```
+  (Mejor: usar reverse proxy o WSL/docker para simular entorno prod.)
+
+F) XMPP y TLS (guía mínima, leave-for-server)
+- Recomendación rápida para pruebas: usar contenedor de Prosody en WSL2/Docker:
+  ```bash
+  docker run -d --name prosody -p 5222:5222 -p 5280:5280 prosody/prosody
+  ```
+- En producción configurar virtualhosts y TLS con certificados Let’s Encrypt en servidor Linux (nginx+certbot). Para desarrollo en Windows, usar WSL2 para docker-compose.
+
+G) Certificado de dominio (producción)
+- No hacerlo desde Windows local. Pasos resumidos para servidor Linux:
+  1. Configurar nginx como reverse proxy.
+  2. Instalar certbot.
+  3. Ejecutar:
+     ```bash
+     sudo certbot --nginx -d tu-dominio.com -d www.tu-dominio.com
+     ```
+  4. Configurar renovación automática (systemd timer).
+
+H) Diagrama ER y modelo de clases (PlantUML)
+- PlantUML mínimo (guardar como docs/diagramas/er.puml):
+  ```text
+  @startuml
+  entity User { *id : int
+    --
+    email : string
+    password_hash : string
+    role : string
+  }
+  entity Municipio { *id : int
+    nombre : string
+  }
+  entity Reporte { *id : int
+    tipo : string
+    descripcion : text
+    latitud : float
+    longitud : float
+    fecha_hora : datetime
+    municipio_id : int
+    user_id : int
+  }
+  entity LogEntry { *id : int
+    level : string
+    message : text
+    created_at : datetime
+  }
+  User ||--o{ Reporte : "crea"
+  Municipio ||--o{ Reporte : "contiene"
+  @enduml
+  ```
+- Generar PNG con PlantUML jar o usar https://www.plantuml.com/plantuml.
+
+I) Tests y CI (esqueleto)
+- Añadir test básico (tests/test_health.py):
+  ```python
+  import pytest
+  from app import app
+  @pytest.fixture
+  def client():
+      app.config['TESTING'] = True
+      with app.test_client() as c:
+          yield c
+  def test_health(client):
+      rv = client.get('/health')
+      assert rv.status_code == 200
+      assert rv.json['status'] == 'healthy'
+  ```
+- Ejecutar: `pytest -q`
+- CI: crear .github/workflows/ci.yml (instalar deps, pytest, flake8 opcional).
+
+Checklist rápida para tu primer PR (Windows)
+- [ ] .env creado local y no commiteado
+- [ ] venv activo y pip install -r requirements.txt
+- [ ] MySQL corriendo y reportes_db creado
+- [ ] Migraciones generadas y aplicadas (flask db migrate && flask db upgrade)
+- [ ] Probar endpoints: /reportar (usar reportar.html), /obtener_reportes, /health
+- [ ] Ejecutar tests básicos (pytest)
+- [ ] Subir cambios en una rama feature/* y abrir PR a main
+
+Notas y contexto (por qué así)
+- La app ya determina municipio usando GeoJSON / heurística; el formulario reportar.js envía lat/long y el backend guarda Reporte con municipio calculado.
+- Migraciones deben generarse después de pulir models.py (añadir ForeignKey y relationship) para que la DB refleje relaciones y constraints.
+- XMPP y TLS requieren infraestructura separada (mejor desplegar en servidor Linux/VM/contenerizado); en Windows se recomienda usar WSL2 para ese servicio.
+
+Si quieres, hago ahora uno de estos pasos por ti (ej.: generar migración inicial en tu repo y preparar commit) — dime cuál. 
+```// filepath: /home/leo/Documentos/codigo/Visual Code/DOCUMENTACION.txt
+
+--------------------
+ACTUALIZACIÓN Y GUÍA PARA COMPAÑERO (Windows) — 06/11/2025
+--------------------
+
+Resumen rápido — qué hay y qué falta
+- Hecho:
+  - Backend Flask con endpoints: /, /reportar (GET/POST), /obtener_reportes, /lista, /health.
+  - Modelos base (models.py): Reporte, User, Municipio, LogEntry.
+  - SQLAlchemy inicializado y db.create_all funciona.
+  - Wireframes y assets: templates (login, reportar, dashboard, admin_dashboard) y static/js/css.
+  - Logging con RotatingFileHandler.
+  - Scaffold de migraciones (Flask‑Migrate) integrado en app.py y script de gestión.
+  - .env.example y .gitignore añadidos.
+
+- Pendiente (prioridad):
+  1) Generar y aplicar migraciones (Flask‑Migrate).
+  2) Ajustar modelo de dominio (FKs, relationships, índices) y volver a migrar.
+  3) Autenticación (Flask-Login) y validaciones.
+  4) XMPP + TLS (servicio y bot) — plan, no implementado.
+  5) Certificado HTTPS en producción (nginx + certbot) — no implementado.
+  6) Diagramas (ER / secuencia) y tests/CI.
+
+Acciones concretas para Windows (paso a paso)
+
+A) Preparar entorno Python (Windows PowerShell)
+1. Crear y activar virtualenv:
+   ```powershell
+   cd "C:\ruta\a\Documentos\codigo\Visual Code"
+   python -m venv venv
+   .\venv\Scripts\Activate
+   ```
+
+2. Instalar dependencias:
+   ```powershell
+   pip install --upgrade pip
+   pip install -r requirements.txt
+   ```
+
+B) Configurar base de datos MySQL (XAMPP/WAMP) — opción Windows
+1. Arrancar MySQL desde XAMPP/WAMP control panel.
+2. Crear la base de datos (phpMyAdmin o CLI):
+   ```sql
+   CREATE DATABASE IF NOT EXISTS reportes_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+   o desde Windows CMD (si mysql en PATH):
+   ```cmd
+   mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS reportes_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+   ```
+
+3. Crear archivo .env (copiar .env.example) y ajustar:
+   ```
+   DB_HOST=localhost
+   DB_PORT=3306
+   DB_USER=root
+   DB_PASSWORD=tu_password
+   DB_NAME=reportes_db
+   FLASK_APP=app.py
+   FLASK_ENV=development
+   PORT=5000
+   ```
+
+C) Migraciones (Flask‑Migrate) — Windows (PowerShell / CMD)
+- PowerShell:
+  ```powershell
+  $env:FLASK_APP = "app.py"
+  flask db init        # solo la primera vez
+  flask db migrate -m "Initial models"
+  flask db upgrade
+  ```
+
+- CMD:
+  ```cmd
+  set FLASK_APP=app.py
+  flask db init
+  flask db migrate -m "Initial models"
+  flask db upgrade
+  ```
+
+Nota: Si flask db init falla porque ya existe migrations/ omitir init.
+
+D) Ejecutar la aplicación localmente
+- PowerShell:
+  ```powershell
+  .\venv\Scripts\Activate
+  python app.py
+  ```
+- o con flask run:
+  ```powershell
+  $env:FLASK_APP="app.py"
+  flask run --host=0.0.0.0 --port=5000
+  ```
+
+Probar endpoints:
+```powershell
+curl http://127.0.0.1:5000/health
+curl http://127.0.0.1:5000/obtener_reportes
+```
+
+E) Desarrollo local HTTPS (opcional en Windows)
+- Para desarrollo local seguro usar mkcert:
+  1. Instalar mkcert (scoop/chocolatey o desde release).
+  2. Generar certificados:
+     ```powershell
+     mkcert -install
+     mkcert localhost 127.0.0.1 ::1
+     ```
+  3. En app.py, para desarrollo, cambiar app.run a:
+     ```python
+     app.run(host='0.0.0.0', port=5000, ssl_context=('localhost.pem','localhost-key.pem'))
+     ```
+  (Mejor: usar reverse proxy o WSL/docker para simular entorno prod.)
+
+F) XMPP y TLS (guía mínima, leave-for-server)
+- Recomendación rápida para pruebas: usar contenedor de Prosody en WSL2/Docker:
+  ```bash
+  docker run -d --name prosody -p 5222:5222 -p 5280:5280 prosody/prosody
+  ```
+- En producción configurar virtualhosts y TLS con certificados Let’s Encrypt en servidor Linux (nginx+certbot). Para desarrollo en Windows, usar WSL2 para docker-compose.
+
+G) Certificado de dominio (producción)
+- No hacerlo desde Windows local. Pasos resumidos para servidor Linux:
+  1. Configurar nginx como reverse proxy.
+  2. Instalar certbot.
+  3. Ejecutar:
+     ```bash
+     sudo certbot --nginx -d tu-dominio.com -d www.tu-dominio.com
+     ```
+  4. Configurar renovación automática (systemd timer).
+
+H) Diagrama ER y modelo de clases (PlantUML)
+- PlantUML mínimo (guardar como docs/diagramas/er.puml):
+  ```text
+  @startuml
+  entity User { *id : int
+    --
+    email : string
+    password_hash : string
+    role : string
+  }
+  entity Municipio { *id : int
+    nombre : string
+  }
+  entity Reporte { *id : int
+    tipo : string
+    descripcion : text
+    latitud : float
+    longitud : float
+    fecha_hora : datetime
+    municipio_id : int
+    user_id : int
+  }
+  entity LogEntry { *id : int
+    level : string
+    message : text
+    created_at : datetime
+  }
+  User ||--o{ Reporte : "crea"
+  Municipio ||--o{ Reporte : "contiene"
+  @enduml
+  ```
+- Generar PNG con PlantUML jar o usar https://www.plantuml.com/plantuml.
+
+I) Tests y CI (esqueleto)
+- Añadir test básico (tests/test_health.py):
+  ```python
+  import pytest
+  from app import app
+  @pytest.fixture
+  def client():
+      app.config['TESTING'] = True
+      with app.test_client() as c:
+          yield c
+  def test_health(client):
+      rv = client.get('/health')
+      assert rv.status_code == 200
+      assert rv.json['status'] == 'healthy'
+  ```
+- Ejecutar: `pytest -q`
+- CI: crear .github/workflows/ci.yml (instalar deps, pytest, flake8 opcional).
+
+Checklist rápida para tu primer PR (Windows)
+- [ ] .env creado local y no commiteado
+- [ ] venv activo y pip install -r requirements.txt
+- [ ] MySQL corriendo y reportes_db creado
+- [ ] Migraciones generadas y aplicadas (flask db migrate && flask db upgrade)
+- [ ] Probar endpoints: /reportar (usar reportar.html), /obtener_reportes, /health
+- [ ] Ejecutar tests básicos (pytest)
+- [ ] Subir cambios en una rama feature/* y abrir PR a main
+
+Notas y contexto (por qué así)
+- La app ya determina municipio usando GeoJSON / heurística; el formulario reportar.js envía lat/long y el backend guarda Reporte con municipio calculado.
+- Migraciones deben generarse después de pulir models.py (añadir ForeignKey y relationship) para que la DB refleje relaciones y constraints.
+- XMPP y TLS requieren infraestructura separada (mejor desplegar en servidor Linux/VM/contenerizado); en Windows se recomienda usar WSL2 para ese servicio.
+
+Si quieres, hago ahora uno de estos pasos por ti (ej.: generar migración inicial en tu repo y preparar commit) — dime cuál. 
