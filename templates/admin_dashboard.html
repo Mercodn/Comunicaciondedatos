@@ -4,6 +4,101 @@
   <meta charset="utf-8" />
   <title>Admin Dashboard</title>
   <link rel="stylesheet" href="/static/css/wireframe.css" />
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f6f8;
+      margin: 0;
+      padding: 0;
+    }
+
+    .wf-header {
+      background-color: #2c3e50;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .wf-nav a {
+      color: #ecf0f1;
+      margin: 0 15px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .wf-nav a:hover {
+      text-decoration: underline;
+    }
+
+    .wf-main {
+      padding: 30px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    .wf-card {
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      padding: 20px;
+    }
+
+    .wf-card h3 {
+      font-size: 1.3em;
+      color: #2c3e50;
+      margin-bottom: 15px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 5px;
+    }
+
+    .wf-kpi {
+      font-size: 3em;
+      font-weight: bold;
+      color: #27ae60;
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .wf-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .wf-table th {
+      background-color: #ecf0f1;
+      color: #2c3e50;
+      font-weight: bold;
+    }
+
+    .wf-table th, .wf-table td {
+      padding: 12px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .wf-table tr:hover {
+      background-color: #f9f9f9;
+    }
+
+    .wf-footer {
+      text-align: center;
+      padding: 15px;
+      background-color: #ecf0f1;
+      color: #7f8c8d;
+      font-size: 0.9em;
+      margin-top: 40px;
+    }
+
+    .wf-chart img {
+      width: 100%;
+      max-width: 600px;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+  </style>
 </head>
 <body class="wf-body">
   <header class="wf-header">
@@ -19,27 +114,59 @@
   <main class="wf-main wf-grid">
     <section class="wf-card kpi">
       <h3>Usuarios</h3>
-      <div class="wf-kpi" id="kpi-users">—</div>
+      <div class="wf-kpi">{{ total_usuarios }}</div>
     </section>
 
     <section class="wf-card kpi">
       <h3>Reportes totales</h3>
-      <div class="wf-kpi" id="kpi-reports">—</div>
+      <div class="wf-kpi">{{ total_reportes }}</div>
     </section>
 
     <section class="wf-card analytics">
-      <h3>Analíticas (placeholder)</h3>
-      <div class="wf-chart">[chart placeholder]</div>
+      <h3>Reportes por usuario</h3>
+      <div class="wf-chart">
+        <img src="{{ url_for('static', filename='img/reportes_por_usuario.png') }}" alt="Gráfica por usuario">
+      </div>
     </section>
 
     <section class="wf-card recent">
       <h3>Últimos reportes</h3>
-      <table class="wf-table" id="adminReports">
-        <thead><tr><th>#</th><th>Tipo</th><th>Fecha</th><th>Municipio</th></tr></thead>
-        <tbody></tbody>
+      <table class="wf-table">
+        <thead>
+          <tr><th>#</th><th>Usuario</th><th>Tipo</th><th>Fecha</th><th>Municipio</th></tr>
+        </thead>
+        <tbody>
+          {% for r in ultimos.itertuples() %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ r.Nombre }}</td>
+              <td>{{ r.Tipo }}</td>
+              <td>{{ r.Fecha }}</td>
+              <td>{{ r.Municipio if 'Municipio' in r._fields else '—' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
       </table>
     </section>
   </main>
+
+<section class="wf-card">
+  <h3>Esquema de la base de datos</h3>
+  <ul class="wf-list">
+    <li><strong>usuarios.xlsx:</strong> Usuario_ID, Nombre, Correo, Contraseña (hash), Rol</li>
+    <li><strong>reportes.xlsx:</strong> ID, Tipo, Descripción, Latitud, Longitud, Fecha, Usuario_ID, Municipio</li>
+  </ul>
+</section>
+
+<section class="wf-card analytics">
+  <h3>Esquema de la base de datos (ERD)</h3>
+  <div class="wf-chart">
+    <img src="{{ url_for('static', filename='img/esquema_erd.png') }}" alt="Diagrama ERD">
+  </div>
+  <p style="text-align:center; font-size:0.95em; color:#555; margin-top:10px;">
+    Este diagrama muestra la relación entre <strong>usuarios</strong> y <strong>reportes</strong>, incluyendo claves primarias y foráneas.
+  </p>
+</section>
 
   <script src="/static/js/dashboard.js"></script>
   <footer class="wf-footer"><small>Wireframe — admin</small></footer>

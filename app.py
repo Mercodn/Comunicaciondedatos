@@ -190,7 +190,22 @@ def dashboard_view():
 
 @app.route("/admin/dashboard")
 def admin_dashboard_view():
-    return render_template("admin_dashboard.html")
+    df_usuarios = cargar_usuarios()
+    df_reportes = cargar_reportes()
+
+    total_usuarios = len(df_usuarios)
+    total_reportes = len(df_reportes)
+
+    # Unir reportes con nombres
+    df_merged = pd.merge(df_reportes, df_usuarios[["Usuario_ID", "Nombre"]], on="Usuario_ID", how="left")
+    df_merged["Fecha"] = pd.to_datetime(df_merged["Fecha"]).dt.strftime("%d/%m/%Y %H:%M")
+    ultimos = df_merged.sort_values("Fecha", ascending=False).head(10)
+
+    return render_template("admin_dashboard.html",
+        total_usuarios=total_usuarios,
+        total_reportes=total_reportes,
+        ultimos=ultimos
+    )
 
 @app.route("/health")
 def health_check():
