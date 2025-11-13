@@ -1,14 +1,42 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <h1>Bienvenido, {{ usuario }}</h1>
   <meta charset="utf-8" />
   <title>Dashboard — Usuario</title>
   <link rel="stylesheet" href="/static/css/wireframe.css" />
+  <style>
+    .wf-kpi {
+      font-size: 2.5em;
+      font-weight: bold;
+      color: #2c3e50;
+      text-align: center;
+      margin-top: 10px;
+    }
+    .wf-table th, .wf-table td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #ccc;
+    }
+    .wf-table thead {
+      background-color: #f5f5f5;
+    }
+    .wf-card h3 {
+      margin-bottom: 10px;
+      color: #34495e;
+    }
+    .wf-list {
+      list-style: none;
+      padding-left: 0;
+    }
+    .wf-list li {
+      margin-bottom: 6px;
+      font-size: 1.1em;
+    }
+  </style>
 </head>
 <body class="wf-body">
   <header class="wf-header">
-    <h1>Dashboard</h1>
+    <h1>Bienvenido, {{ nombre }}</h1>
     <nav class="wf-nav">
       <a href="/">Inicio</a>
       <a href="/reportar">Reportar</a>
@@ -18,31 +46,80 @@
   </header>
 
   <main class="wf-main wf-grid">
+    <!-- KPIs -->
     <section class="wf-card kpi">
-      <h3>Total reportes</h3>
-      <div class="wf-kpi" id="kpi-total">—</div>
+      <h3>Total de reportes enviados</h3>
+      <div class="wf-kpi">{{ total }}</div>
     </section>
 
     <section class="wf-card kpi">
-      <h3>Últimos 7 días</h3>
-      <div class="wf-kpi" id="kpi-week">—</div>
+      <h3>Tipos de reporte</h3>
+      <ul class="wf-list">
+        {% for tipo, cantidad in tipos.items() %}
+          <li><strong>{{ tipo }}:</strong> {{ cantidad }}</li>
+        {% endfor %}
+      </ul>
     </section>
 
-    <section class="wf-card map">
-      <h3>Mapa (placeholder)</h3>
-      <div id="mapPlaceholder" class="wf-map">MAPA</div>
-    </section>
-
+    <!-- Tabla de últimos reportes -->
     <section class="wf-card list">
       <h3>Últimos reportes</h3>
-      <table id="recentReports" class="wf-table">
-        <thead><tr><th>Tipo</th><th>Fecha</th><th>Municipio</th></tr></thead>
-        <tbody></tbody>
+      <table class="wf-table">
+        <thead>
+          <tr><th>#</th><th>Tipo</th><th>Fecha</th></tr>
+        </thead>
+        <tbody>
+          {% for r in ultimos.itertuples() %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ r.Tipo }}</td>
+              <td>{{ r.Fecha }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Tabla completa de reportes del usuario -->
+    <section class="wf-card list">
+      <h3>Todos mis reportes</h3>
+      <table class="wf-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Tipo</th>
+            <th>Descripción</th>
+            <th>Fecha</th>
+            <th>Latitud</th>
+            <th>Longitud</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in todos.itertuples() %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ r.Tipo }}</td>
+              <td>{{ r.Descripción }}</td>
+              <td>{{ r.Fecha }}</td>
+              <td>{{ r.Latitud }}</td>
+              <td>{{ r.Longitud }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
       </table>
     </section>
   </main>
 
-  <script src="/static/js/dashboard.js"></script>
+<section class="wf-card analytics">
+  <h3>Reportes por usuario</h3>
+  <div style="max-width: 600px; margin: 0 auto;">
+    <img src="{{ url_for('static', filename='img/reportes_por_usuario.png') }}"
+         alt="Gráfica por usuario"
+         style="width:100%; height:auto; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+  </div>
+</section>
+
+
   <footer class="wf-footer"><small>Wireframe — usuario</small></footer>
 </body>
 </html>

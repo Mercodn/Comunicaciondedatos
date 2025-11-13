@@ -2,6 +2,7 @@ import pandas as pd
 from datetime import datetime
 import hashlib
 import os
+import subprocess
 
 # Rutas absolutas para los archivos Excel
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -60,3 +61,7 @@ def guardar_reporte(tipo, descripcion, lat, lng, usuario_id):
     }
     df = pd.concat([df, pd.DataFrame([nueva_fila])], ignore_index=True)
     df.to_excel(REPORTES_PATH, index=False)
+
+    # Ejecutar el script de gráficas automáticamente
+    script_path = os.path.join(ROOT_DIR, "generar_graficas.py")
+    subprocess.run(["python", script_path])

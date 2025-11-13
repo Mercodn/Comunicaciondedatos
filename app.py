@@ -9,8 +9,10 @@ from dotenv import load_dotenv
 import logging
 from logging.handlers import RotatingFileHandler
 import pandas as pd
-from utils.excel_db import guardar_reporte, cargar_usuarios, verificar_login, registrar_usuario
+from utils.excel_db import guardar_reporte, cargar_usuarios, verificar_login, registrar_usuario, cargar_reportes
 
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+REPORTES_PATH = os.path.join(ROOT_DIR, "reportes.xlsx")
 # Cargar variables de entorno
 load_dotenv()
 from utils.excel_db import registrar_usuario
@@ -96,8 +98,13 @@ def reportar():
         return render_template("reportar.html")
     try:
         data = request.get_json()
+        nombre = session.get("usuario")
+        df_usuarios = cargar_usuarios()
+        usuario_id = df_usuarios[df_usuarios["Nombre"] == nombre]["Usuario_ID"].values[0]
+
+        guardar_reporte(data["tipo"], data["descripcion"], float(data["latitud"]), float(data["longitud"]), usuario_id=usuario_id)
+
         municipio = obtener_municipio(float(data["latitud"]), float(data["longitud"]))
-        guardar_reporte(data["tipo"], data["descripcion"], float(data["latitud"]), float(data["longitud"]), usuario_id=0)
         return jsonify({"mensaje": "Reporte guardado con éxito ✅", "municipio": municipio})
     except Exception as e:
         print(f"Error en reportar: {e}")
@@ -155,13 +162,31 @@ def logout():
 
 
 
-
-
 @app.route("/dashboard")
 def dashboard_view():
     if "usuario" not in session:
         return redirect("/login")
-    return render_template("dashboard.html", usuario=session["usuario"])
+    nombre = session["usuario"]
+    df_usuarios = cargar_usuarios()
+    df_reportes = cargar_reportes()
+
+    # Obtener el ID del usuario actual
+    usuario_id = df_usuarios[df_usuarios["Nombre"] == nombre]["Usuario_ID"].values[0]
+
+    # Filtrar los reportes del usuario
+    df_mios = df_reportes[df_reportes["Usuario_ID"] == usuario_id]
+
+    total = len(df_mios)
+    ultimos = df_mios.sort_values("Fecha", ascending=False).head(5)
+    tipos = df_mios["Tipo"].value_counts().to_dict()
+
+    return render_template("dashboard.html",
+        nombre=nombre,
+        total=total,
+        ultimos=ultimos,
+        tipos=tipos,
+        todos=df_mios
+    )
 
 @app.route("/admin/dashboard")
 def admin_dashboard_view():
