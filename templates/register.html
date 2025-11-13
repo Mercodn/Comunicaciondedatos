@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Registro — Wireframe</title>
+  <link rel="stylesheet" href="/static/css/wireframe.css" />
+</head>
+<body class="wf-body">
+  <header class="wf-header">
+    <h1>Crear cuenta</h1>
+  </header>
+
+  <main class="wf-main">
+    <section class="wf-card wf-auth">
+      <h2>Registro de usuario</h2>
+      <form id="registerForm" action="/register" method="post">
+        <label>Nombre
+          <input type="text" name="nombre" placeholder="Tu nombre completo" required>
+        </label>
+        <label>Email
+          <input type="email" name="email" placeholder="usuario@correo.com" required>
+        </label>
+        <label>Contraseña
+          <input type="password" name="password" placeholder="********" required>
+        </label>
+        <div class="wf-actions">
+          <button type="submit">Registrarse</button>
+          <a class="wf-link" href="/login">¿Ya tienes cuenta? Inicia sesión</a>
+        </div>
+      </form>
+    </section>
+
+    <aside class="wf-card wf-info">
+      <h3>¿Por qué registrarte?</h3>
+      <p>Podrás reportar incidentes, ver tu historial y acceder al dashboard con estadísticas personalizadas.</p>
+    </aside>
+  </main>
+
+  <footer class="wf-footer">
+    <small>Wireframe — registro de usuario</small>
+  </footer>
+</body>
+</html>

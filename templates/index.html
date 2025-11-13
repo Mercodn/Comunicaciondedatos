@@ -5,50 +5,66 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Menú Principal</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     * {
       box-sizing: border-box;
     }
 
-    body {
+    body, html {
       margin: 0;
+      padding: 0;
+      height: 100%;
       font-family: 'Roboto', sans-serif;
-      background: linear-gradient(135deg, #e0f7fa, #f0f2f5);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 20px;
+      overflow: hidden;
+    }
+
+    #map {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 100%;
+      z-index: -1;
+      opacity: 0.6;
+    }
+
+    .overlay {
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+      max-width: 600px;
+      margin: 60px auto;
+      padding: 30px 20px;
+      text-align: center;
     }
 
     header {
       background-color: #007bff;
       color: white;
-      width: 100%;
-      max-width: 600px;
       padding: 20px;
-      text-align: center;
-      border-radius: 12px 12px 0 0;
+      border-radius: 16px 16px 0 0;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
 
     h1 {
       margin: 0;
-      font-size: 1.8rem;
-      letter-spacing: 0.5px;
+      font-size: 2rem;
+    }
+
+    header p {
+      margin-top: 10px;
+      font-size: 1rem;
+      font-weight: 400;
     }
 
     .menu {
-      background: white;
-      width: 100%;
-      max-width: 600px;
-      border-radius: 0 0 12px 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      padding: 30px 20px;
       display: flex;
       flex-direction: column;
       gap: 15px;
+      margin-top: 20px;
     }
 
     .menu a {
@@ -56,12 +72,11 @@
       background-color: #007bff;
       color: white;
       padding: 14px 20px;
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 1rem;
       font-weight: bold;
-      text-align: center;
       transition: transform 0.2s ease, background-color 0.3s ease;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
     .menu a:hover {
@@ -71,27 +86,56 @@
 
     @media (max-width: 480px) {
       h1 {
-        font-size: 1.4rem;
+        font-size: 1.5rem;
       }
 
       .menu a {
         font-size: 0.95rem;
         padding: 12px;
       }
+
+      .overlay {
+        margin: 20px;
+        padding: 20px;
+      }
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>🚦 Sistema de Reportes Viales</h1>
-  </header>
+  <div id="map"></div>
 
-  <div class="menu">
-    <a href="/reportar">📍 Reportar Incidente</a>
-    <a href="/lista">📋 Ver Lista de Reportes</a>
-    <a href="/login">🔐 Iniciar Sesión</a>
-    <a href="/dashboard">📊 Dashboard</a>
-    <a href="/admin/dashboard">🛠️ Panel de Administración</a>
+  <div class="overlay">
+    <header>
+      <h1>🚦 Sistema de Reportes Viales</h1>
+      {% if nombre %}
+        <p>👋 Bienvenido, <strong>{{ nombre }}</strong></p>
+      {% else %}
+        <p>🔐 Inicia sesión para acceder a todas las funciones</p>
+      {% endif %}
+    </header>
+
+    <div class="menu">
+      <a href="/lista">📋 Ver Lista de Reportes</a>
+
+      {% if nombre %}
+        <a href="/reportar">📍 Reportar Incidente</a>
+        <a href="/dashboard">📊 Dashboard</a>
+        {% if rol == "admin" %}
+          <a href="/admin/dashboard">🛠️ Panel de Administración</a>
+        {% endif %}
+        <a href="/logout">🚪 Cerrar Sesión</a>
+      {% else %}
+        <a href="/login">🔐 Iniciar Sesión</a>
+        <a href="/register">📝 Crear Cuenta</a>
+      {% endif %}
+    </div>
   </div>
+
+  <script>
+    const map = L.map('map', { zoomControl: false }).setView([4.916, -74.031], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+  </script>
 </body>
 </html>

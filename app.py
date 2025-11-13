@@ -1,6 +1,9 @@
 from flask import Flask, render_template, request, jsonify
 from datetime import datetime
 import os
+from flask import session
+
+from flask import Flask, render_template, request, jsonify, session, redirect
 import json
 from dotenv import load_dotenv
 import logging
@@ -10,9 +13,17 @@ from utils.excel_db import guardar_reporte, cargar_usuarios, verificar_login, re
 
 # Cargar variables de entorno
 load_dotenv()
+from utils.excel_db import registrar_usuario
 
+def crear_admin_por_defecto():
+    df = cargar_usuarios()
+    if not ((df["Correo"] == "nicolas72lol@gmail.com") & (df["Rol"] == "admin")).any():
+        registrar_usuario("Nicolás", "nicolas72lol@gmail.com", "admin", rol="admin")
+        print("✅ Usuario administrador creado por defecto")
+
+crear_admin_por_defecto()
 app = Flask(__name__)
-
+app.secret_key = os.getenv("SECRET_KEY", "clave-segura")
 # Variable global para el GeoJSON
 sabana_geojson = None
 
@@ -73,10 +84,14 @@ app.logger.setLevel(logging.INFO)
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    nombre = session.get("usuario")
+    rol = session.get("rol")
+    return render_template("index.html", nombre=nombre, rol=rol)
 
 @app.route("/reportar", methods=["GET", "POST"])
 def reportar():
+    if "usuario" not in session:
+        return redirect("/login")
     if request.method == "GET":
         return render_template("reportar.html")
     try:
@@ -109,18 +124,44 @@ def lista():
 @app.route("/login", methods=["GET", "POST"])
 def login_view():
     if request.method == "POST":
-        correo = request.form.get("correo")
-        clave = request.form.get("clave")
+        correo = request.form.get("email")
+        clave = request.form.get("password")
         usuario = verificar_login(correo, clave)
         if usuario:
-            return jsonify({"mensaje": "Login exitoso", "usuario": usuario})
+            session["usuario"] = usuario["Nombre"]
+            session["rol"] = usuario["Rol"]
+            if usuario["Rol"] == "admin":
+                return redirect("/admin/dashboard")
+            else:
+                return redirect("/dashboard")
         else:
-            return jsonify({"error": "Credenciales inválidas"}), 401
+            return render_template("login.html", error="Credenciales inválidas")
     return render_template("login.html")
+
+@app.route("/register", methods=["GET", "POST"])
+def register_view():
+    if request.method == "POST":
+        nombre = request.form.get("nombre")
+        correo = request.form.get("email")
+        clave = request.form.get("password")
+        registrar_usuario(nombre, correo, clave, rol="usuario")
+        return render_template("login.html", mensaje="Usuario registrado con éxito")
+    return render_template("register.html")
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/")
+
+
+
+
 
 @app.route("/dashboard")
 def dashboard_view():
-    return render_template("dashboard.html")
+    if "usuario" not in session:
+        return redirect("/login")
+    return render_template("dashboard.html", usuario=session["usuario"])
 
 @app.route("/admin/dashboard")
 def admin_dashboard_view():
