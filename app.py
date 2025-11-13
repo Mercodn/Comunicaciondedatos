@@ -1,81 +1,44 @@
 from flask import Flask, render_template, request, jsonify
 from datetime import datetime
 import os
-import json                # <--- añadir esta línea
+import json
 from dotenv import load_dotenv
-from extensions import db   # <-- nuevo import
-from flask_migrate import Migrate, upgrade, init, migrate  # <-- nuevo import
 import logging
 from logging.handlers import RotatingFileHandler
+import pandas as pd
+from utils.excel_db import guardar_reporte, cargar_usuarios, verificar_login, registrar_usuario
 
 # Cargar variables de entorno
 load_dotenv()
 
 app = Flask(__name__)
 
-# Configuración de MySQL usando variables de entorno
-DB_HOST = os.getenv('DB_HOST', '127.0.0.1')
-DB_USER = os.getenv('DB_USER', 'root')
-DB_PASSWORD = os.getenv('DB_PASSWORD', 'root')
-DB_NAME = os.getenv('DB_NAME', 'reportes_db')
-DB_PORT = os.getenv('DB_PORT', '3306')
-
-# Construir URI de conexión
-app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-db.init_app(app)            # <-- inicializar aquí
-migrate = Migrate()         # <-- nuevo
-migrate.init_app(app, db)   # <-- nuevo
-
-# después de init_app, importar modelos
-from models import Reporte, User, Municipio, LogEntry
-
 # Variable global para el GeoJSON
 sabana_geojson = None
 
-# Cargar el GeoJSON de Sabana Centro con manejo de errores
 def cargar_geojson():
     global sabana_geojson
     try:
         geojson_path = 'static/sabana_centro.geojson'
-        
-        # Verificar si el archivo existe
-        if not os.path.exists(geojson_path):
-            print(f"⚠️ Archivo {geojson_path} no encontrado")
+        if not os.path.exists(geojson_path) or os.path.getsize(geojson_path) == 0:
+            print(f"⚠️ Archivo {geojson_path} no válido")
             return False
-            
-        # Verificar si el archivo está vacío
-        if os.path.getsize(geojson_path) == 0:
-            print(f"⚠️ Archivo {geojson_path} está vacío")
-            return False
-            
         with open(geojson_path, 'r', encoding='utf-8') as f:
             contenido = f.read().strip()
-            
-            # Verificar si el archivo tiene contenido
             if not contenido:
-                print(f"⚠️ Archivo {geojson_path} no tiene contenido")
+                print(f"⚠️ Archivo {geojson_path} vacío")
                 return False
-                 #
             sabana_geojson = json.loads(contenido)
-            print(f"✅ GeoJSON cargado correctamente con {len(sabana_geojson['features'])} municipios")
+            print(f"✅ GeoJSON cargado con {len(sabana_geojson['features'])} municipios")
             return True
-    except json.JSONDecodeError as e:
-        print(f"❌ Error decodificando JSON: {e}")
-        return False
     except Exception as e:
         print(f"❌ Error cargando GeoJSON: {e}")
         return False
 
-# Función simplificada para determinar el municipio
 def obtener_municipio(lat, lng):
-    # Si no hay GeoJSON cargado, retornar mensaje genérico
     if not sabana_geojson:
         return "Sabana Centro"
-    
     try:
-        # Coordenadas aproximadas de los municipios (ajusta según tus necesidades)
         coords_municipios = {
             'Chía': {'min_lat': 4.8, 'max_lat': 5.0, 'min_lng': -74.1, 'max_lng': -73.9},
             'Cajicá': {'min_lat': 4.9, 'max_lat': 5.0, 'min_lng': -74.1, 'max_lng': -73.9},
@@ -90,26 +53,17 @@ def obtener_municipio(lat, lng):
             'Subachoque': {'min_lat': 4.9, 'max_lat': 5.0, 'min_lng': -74.2, 'max_lng': -74.1},
             'Bojacá': {'min_lat': 4.7, 'max_lat': 4.9, 'min_lng': -74.3, 'max_lng': -74.2}
         }
-        
-        # Buscar en qué municipio está el punto
         for municipio, bbox in coords_municipios.items():
-            if (bbox['min_lat'] <= lat <= bbox['max_lat'] and 
-                bbox['min_lng'] <= lng <= bbox['max_lng']):
+            if bbox['min_lat'] <= lat <= bbox['max_lat'] and bbox['min_lng'] <= lng <= bbox['max_lng']:
                 return municipio
-        
         return "Sabana Centro"
-        
     except Exception as e:
         print(f"Error determinando municipio: {e}")
         return "Sabana Centro"
 
-# Cargar el GeoJSON al iniciar la aplicación
 cargar_geojson()
 
-# después de app = Flask(__name__)
-# Asegurar que exista el directorio de logs
 os.makedirs('logs', exist_ok=True)
-
 handler = RotatingFileHandler('logs/app.log', maxBytes=1024*1024, backupCount=3)
 handler.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
@@ -128,90 +82,40 @@ def reportar():
     try:
         data = request.get_json()
         municipio = obtener_municipio(float(data["latitud"]), float(data["longitud"]))
-
-        nuevo_reporte = Reporte(
-            tipo=data["tipo"],
-            descripcion=data["descripcion"],
-            latitud=float(data["latitud"]),
-            longitud=float(data["longitud"]),
-            municipio=municipio
-        )
-        
-        db.session.add(nuevo_reporte)
-        db.session.commit()
-
+        guardar_reporte(data["tipo"], data["descripcion"], float(data["latitud"]), float(data["longitud"]), usuario_id=0)
         return jsonify({"mensaje": "Reporte guardado con éxito ✅", "municipio": municipio})
     except Exception as e:
-        db.session.rollback()
         print(f"Error en reportar: {e}")
         return jsonify({"error": "Error al guardar el reporte"}), 500
-
-@app.route("/obtener_reportes")
-def obtener_reportes():
-    try:
-        reportes = Reporte.query.all()
-        return jsonify([{
-            "tipo": r.tipo,
-            "descripcion": r.descripcion,
-            "latitud": r.latitud,
-            "longitud": r.longitud,
-            "fecha_hora": r.fecha_hora.strftime("%d/%m/%Y, %I:%M:%S %p"),
-            "municipio": r.municipio
-        } for r in reportes])
-    except Exception as e:
-        print(f"Error obteniendo reportes: {e}")
-        return jsonify([])
 
 @app.route("/lista")
 def lista():
     try:
-        reportes = Reporte.query.all()
-        return render_template("lista.html", reportes=[{
-            "tipo": r.tipo,
-            "descripcion": r.descripcion,
-            "latitud": r.latitud,
-            "longitud": r.longitud,
-            "fecha_hora": r.fecha_hora.strftime("%d/%m/%Y, %I:%M:%S %p"),
-            "municipio": r.municipio
-        } for r in reportes])
+        df = pd.read_excel("reportes.xlsx")
+        # Convertir la columna 'Fecha' al formato esperado por el template
+        df["Fecha y hora"] = pd.to_datetime(df["Fecha"]).dt.strftime("%d/%m/%Y, %I:%M:%S %p")
+        reportes = df.rename(columns={
+            "Tipo": "tipo",
+            "Descripción": "descripcion",
+            "Latitud": "latitud",
+            "Longitud": "longitud",
+            "Fecha y hora": "fecha_hora"
+        }).to_dict(orient="records")
+        return render_template("lista.html", reportes=reportes)
     except Exception as e:
         print(f"Error cargando lista: {e}")
         return render_template("lista.html", reportes=[])
 
-@app.route("/health")
-def health_check():
-    return jsonify({"status": "healthy"}), 200
-
-@app.cli.command("init_db")
-def init_db_command():
-    """Inicializa la base de datos."""
-    from extensions import db
-    db.create_all()
-    print("Base de datos inicializada.")
-
-@app.cli.command("migrate_db")
-def migrate_db_command():
-    """Aplica migraciones a la base de datos."""
-    upgrade()
-    print("Migraciones aplicadas.")
-
-@app.cli.command("create_migration")
-def create_migration_command():
-    """Crea una nueva migración."""
-    migrate()
-    print("Nueva migración creada.")
-
-@app.errorhandler(500)
-def internal_error(e):
-    app.logger.exception("Internal server error")
-    return jsonify({"error": "Internal server error"}), 500
-
-# nuevo: wireframe routes
 @app.route("/login", methods=["GET", "POST"])
 def login_view():
     if request.method == "POST":
-        # placeholder: real auth no implementada
-        return jsonify({"mensaje":"login recibido"}), 200
+        correo = request.form.get("correo")
+        clave = request.form.get("clave")
+        usuario = verificar_login(correo, clave)
+        if usuario:
+            return jsonify({"mensaje": "Login exitoso", "usuario": usuario})
+        else:
+            return jsonify({"error": "Credenciales inválidas"}), 401
     return render_template("login.html")
 
 @app.route("/dashboard")
@@ -222,13 +126,14 @@ def dashboard_view():
 def admin_dashboard_view():
     return render_template("admin_dashboard.html")
 
-@app.route("/test_db")
-def test_db():
-    try:
-        db.session.execute("SELECT 1")
-        return "✅ Conexión exitosa con la base de datos"
-    except Exception as e:
-        return f"❌ Error de conexión: {e}"
+@app.route("/health")
+def health_check():
+    return jsonify({"status": "healthy"}), 200
+
+@app.errorhandler(500)
+def internal_error(e):
+    app.logger.exception("Internal server error")
+    return jsonify({"error": "Internal server error"}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
