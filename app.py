@@ -222,6 +222,14 @@ def dashboard_view():
 def admin_dashboard_view():
     return render_template("admin_dashboard.html")
 
+@app.route("/test_db")
+def test_db():
+    try:
+        db.session.execute("SELECT 1")
+        return "✅ Conexión exitosa con la base de datos"
+    except Exception as e:
+        return f"❌ Error de conexión: {e}"
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug_mode = os.environ.get("FLASK_ENV") != "production"
