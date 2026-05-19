@@ -4,18 +4,21 @@
   <script src="https://t.contentsquare.net/uxa/2caa67f476ad3.js"></script>
 <head>
   <meta charset="utf-8" />
-  <title>Login — Wireframe</title>
+  <title>Registro — Wireframe</title>
   <link rel="stylesheet" href="/static/css/wireframe.css" />
 </head>
 <body class="wf-body">
   <header class="wf-header">
-    <h1>Reportes Viales</h1>
+    <h1>Crear cuenta</h1>
   </header>
 
   <main class="wf-main">
     <section class="wf-card wf-auth">
-      <h2>Iniciar sesión</h2>
-      <form id="loginForm" action="/login" method="post">
+      <h2>Registro de usuario</h2>
+      <form id="registerForm" action="/register" method="post">
+        <label>Nombre
+          <input type="text" name="nombre" placeholder="Tu nombre completo" required>
+        </label>
         <label>Email
           <input type="email" name="email" placeholder="usuario@correo.com" required>
         </label>
@@ -23,20 +26,20 @@
           <input type="password" name="password" placeholder="********" required>
         </label>
         <div class="wf-actions">
-          <button type="submit">Entrar</button>
-          <a class="wf-link" href="/register">Crear cuenta</a>
+          <button type="submit">Registrarse</button>
+          <a class="wf-link" href="/login">¿Ya tienes cuenta? Inicia sesión</a>
         </div>
       </form>
     </section>
 
     <aside class="wf-card wf-info">
-      <h3>Resumen</h3>
-      <p>Accede para reportar incidentes, ver tu historial y el dashboard con analíticas.</p>
+      <h3>¿Por qué registrarte?</h3>
+      <p>Podrás reportar incidentes, ver tu historial y acceder al dashboard con estadísticas personalizadas.</p>
     </aside>
   </main>
 
   <footer class="wf-footer">
-    <small>Wireframe — interfaz preliminar</small>
+    <small>Wireframe — registro de usuario</small>
   </footer>
 </body>
 </html>
